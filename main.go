@@ -21,14 +21,19 @@ func main() {
 		log.Fatal("Error: Webpage flag must be set")
 	}
 
+	maxDepth := 1
 	visited := make(map[string]bool)
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 
-	var crawl func(string)
+	var crawl func(string, int)
 
-	crawl = func(url string) {
+	crawl = func(url string, depth int) {
 		defer wg.Done()
+
+		if depth > maxDepth {
+			return
+		}
 
 		mu.Lock()
 		if visited[url] {
@@ -48,12 +53,12 @@ func main() {
 		fmt.Println("Found:", url)
 		for _, link := range links {
 			wg.Add(1)
-			go crawl(link)
+			go crawl(link, depth+1)
 		}
 	}
 
 	wg.Add(1)
-	go crawl(*webPage)
+	go crawl(*webPage, 0)
 	wg.Wait()
 }
 
