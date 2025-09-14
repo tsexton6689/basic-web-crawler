@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"strings"
 
 	"golang.org/x/net/html"
 )
@@ -19,12 +21,19 @@ func main() {
 		log.Fatal("Error: Webpage flag must be set")
 	}
 
+	visited := make(map[string]bool)
+
+	crawl(*webPage, visited)
+
+	for key, _ := range visited {
+		fmt.Println(key)
+	}
+
+	os.Exit(0)
+
 }
 
-func crawl(url string, depth int, visited map[string]bool) error {
-	if (depth == 3) {
-		return nil
-	}
+func crawl(url string, visited map[string]bool) error {
 
 	visited[url] = true
 
@@ -35,7 +44,7 @@ func crawl(url string, depth int, visited map[string]bool) error {
 	}
 
 	for _, link := range links {
-		crawl(link, depth + 1, visited)
+		visited[link] = true
 	}
 
 	return nil
@@ -61,7 +70,7 @@ func fetch(url string) ([]string, error) {
 		token := tokens.Token()
 		if token.Data == "a" {
 			for _, attr := range token.Attr {
-				if attr.Key == "href" {
+				if attr.Key == "href" && strings.Contains(attr.Val, "https://") {
 					links = append(links, attr.Val)
 				}
 			}
