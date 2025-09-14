@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"strings"
+	"sync"
 
 	"golang.org/x/net/html"
 )
@@ -22,32 +22,39 @@ func main() {
 	}
 
 	visited := make(map[string]bool)
+	var mu sync.Mutex
+	var wg sync.WaitGroup
 
-	crawl(*webPage, visited)
+	var crawl func(string)
 
-	for key, _ := range visited {
-		fmt.Println(key)
+	crawl = func(url string) {
+		defer wg.Done()
+
+		mu.Lock()
+		if visited[url] {
+			mu.Unlock()
+			return
+		}
+
+		visited[url] = true
+		mu.Unlock()
+
+		links, err := fetch(url)
+		if err != nil {
+			fmt.Println("error:", err)
+			return
+		}
+
+		fmt.Println("Found:", url)
+		for _, link := range links {
+			wg.Add(1)
+			go crawl(link)
+		}
 	}
 
-	os.Exit(0)
-
-}
-
-func crawl(url string, visited map[string]bool) error {
-
-	visited[url] = true
-
-	links, err := fetch(url)
-
-	if err != nil {
-		return err
-	}
-
-	for _, link := range links {
-		visited[link] = true
-	}
-
-	return nil
+	wg.Add(1)
+	go crawl(*webPage)
+	wg.Wait()
 }
 
 func fetch(url string) ([]string, error) {
